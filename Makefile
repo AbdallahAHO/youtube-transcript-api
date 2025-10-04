@@ -7,13 +7,17 @@ help:  ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 install:  ## Install production dependencies
-	pip install -r requirements.txt
+	python -m pip install -r requirements.txt
 
 install-dev:  ## Install development dependencies
-	pip install -r requirements-dev.txt
+	python -m pip install -r requirements-dev.txt
 	pre-commit install
 
-setup: install-dev  ## Complete development setup
+setup:  ## Setup for deployment (production dependencies only)
+	python -m pip install -r requirements.txt
+	@echo "✅ Setup complete!"
+
+setup-dev: install-dev  ## Complete development setup
 	@echo "✅ Development environment setup complete!"
 
 test:  ## Run tests with coverage
@@ -68,7 +72,12 @@ run:  ## Run development server
 	python app.py
 
 run-prod:  ## Run production server with gunicorn
-	gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 app:app
+	gunicorn --bind ${GUNICORN_BIND:-0.0.0.0:${PORT:-9585}} \
+		--workers ${GUNICORN_WORKERS:-4} \
+		--timeout ${GUNICORN_TIMEOUT:-120} \
+		--access-logfile - \
+		--error-logfile - \
+		app:app
 
 check: lint test  ## Run all checks (lint + test)
 

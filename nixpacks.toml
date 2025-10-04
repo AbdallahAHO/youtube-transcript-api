@@ -1,0 +1,30 @@
+[phases.setup]
+nixPkgs = ["python311", "gcc", "curl", "wget", "gnumake"]
+nixLibs = ["zlib", "stdenv.cc.cc.lib"]
+aptPkgs = ["curl", "wget", "ffmpeg"]
+
+[phases.install]
+cmds = ["make install"]
+
+[phases.build]
+cmds = ["make clean"]
+
+[start]
+cmd = "make run-prod"
+
+[variables]
+# Application Configuration
+PORT = "9585"
+
+# Flask Configuration
+FLASK_ENV = "production"
+FLASK_DEBUG = "false"
+
+# Python Configuration
+PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
+
+# Gunicorn Configuration
+GUNICORN_WORKERS = "4"
+GUNICORN_TIMEOUT = "120"
+GUNICORN_BIND = "0.0.0.0:9585"

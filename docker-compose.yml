@@ -2,22 +2,31 @@ version: '3.8'
 
 services:
   youtube-transcript-api:
-    build: .
+    build:
+      context: .
+      args:
+        - PORT=${PORT:-9585}
     image: youtube-transcript-api:latest
     container_name: youtube-transcript-api
     ports:
-      - "9585:${PORT:-}"
+      - "${PORT:-9585}:${PORT:-9585}"
+    env_file:
+      - .env
     environment:
-      # Optional: Add Webshare proxy credentials for bypassing YouTube blocking
+      - PORT=${PORT:-9585}
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
       - WEBSHARE_PROXY_USERNAME=${WEBSHARE_PROXY_USERNAME:-}
       - WEBSHARE_PROXY_PASSWORD=${WEBSHARE_PROXY_PASSWORD:-}
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - PYTHONDONTWRITEBYTECODE=${PYTHONDONTWRITEBYTECODE:-1}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-120}
+      - GUNICORN_BIND=${GUNICORN_BIND:-0.0.0.0:9585}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9585/health')"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-9585}/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
-    # Optional: Mount volume for persistent cache (if implementing file-based cache in future)
-    # volumes:
-    #   - ./cache:/app/cache
+      start_period: 10s
