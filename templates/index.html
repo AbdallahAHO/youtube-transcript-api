@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100 dark:bg-gray-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>YouTube Transcript Fetcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Dark mode initialization
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+<body class="h-full">
+    <div class="min-h-full">
+        <!-- Header -->
+        <header class="bg-indigo-600 pb-24 dark:bg-indigo-800">
+            <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+                <div class="relative flex items-center justify-between py-5">
+                    <!-- Logo/Title -->
+                    <div class="flex items-center">
+                        <h1 class="text-xl font-bold text-white">YouTube Transcript Fetcher</h1>
+                    </div>
+
+                    <!-- Dark Mode Toggle -->
+                    <button
+                        onclick="toggleDarkMode()"
+                        class="rounded-md p-2 text-indigo-100 hover:bg-indigo-500/75 dark:hover:bg-indigo-700/75 transition"
+                        aria-label="Toggle dark mode"
+                    >
+                        <svg class="h-6 w-6 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <svg class="h-6 w-6 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Input Section in Header -->
+                <div class="mt-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="urlInput" class="block text-sm font-medium text-white mb-2">YouTube URL</label>
+                            <input
+                                type="text"
+                                id="urlInput"
+                                placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                                class="block w-full rounded-md border-0 px-3 py-2.5 text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-white/20 dark:ring-white/10 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:ring-2 focus:ring-inset focus:ring-white bg-white/90 dark:bg-gray-950 sm:text-sm"
+                            >
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                onclick="getTranscript()"
+                                id="fetchBtn"
+                                class="flex-1 rounded-md bg-white px-4 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition"
+                            >
+                                Get Transcript
+                            </button>
+                            <button
+                                onclick="listTranscripts()"
+                                id="listBtn"
+                                class="flex-1 rounded-md bg-indigo-700 dark:bg-indigo-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-800 dark:hover:bg-indigo-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed transition"
+                            >
+                                List Languages
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="-mt-20 pb-8">
+            <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+                <!-- Loading State -->
+                <div id="loading" class="hidden mb-6">
+                    <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800 dark:shadow-none dark:outline dark:-outline-offset-1 dark:outline-white/10 p-8 text-center">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                        <p class="text-gray-600 dark:text-gray-400 font-medium">Fetching transcript...</p>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="error" class="hidden mb-6">
+                    <div class="rounded-lg bg-red-50 dark:bg-red-950/20 p-4 outline outline-1 -outline-offset-1 outline-red-200 dark:outline-red-900/50">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800 dark:text-red-400">Error</h3>
+                                <p id="errorMessage" class="mt-1 text-sm text-red-700 dark:text-red-300"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Available Transcripts -->
+                <div id="availableTranscripts" class="hidden mb-6">
+                    <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800 dark:shadow-none dark:outline dark:-outline-offset-1 dark:outline-white/10 p-6">
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Available Transcripts</h2>
+                        <div id="transcriptList" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Main 3 Column Grid for Video Content -->
+                <div id="videoContentContainer" class="hidden">
+                    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3 lg:gap-6">
+                        <!-- Right Sidebar (1 col) - Video & Description -->
+                        <div class="grid grid-cols-1 gap-6 lg:order-2">
+                            <!-- Video Player Section -->
+                            <section id="videoPlayerSection" class="hidden">
+                                <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800 dark:shadow-none dark:outline dark:-outline-offset-1 dark:outline-white/10 lg:sticky lg:top-4">
+                                    <div class="aspect-video bg-gray-100 dark:bg-gray-900">
+                                        <iframe
+                                            id="youtubePlayer"
+                                            width="100%"
+                                            height="100%"
+                                            src=""
+                                            frameborder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowfullscreen
+                                        ></iframe>
+                                    </div>
+
+                                    <!-- Video Metadata in Sidebar -->
+                                    <div class="p-6">
+                                        <!-- Title -->
+                                        <h1 id="videoTitle" class="text-lg font-bold text-gray-900 dark:text-white mb-3 leading-tight"></h1>
+
+                                        <!-- Channel Info -->
+                                        <div class="flex items-center gap-3 pb-3 border-b border-gray-200 dark:border-white/10 mb-3">
+                                            <div id="channelAvatar" class="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <div id="channelName" class="font-semibold text-gray-900 dark:text-white text-sm truncate"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Stats Bar -->
+                                        <div id="videoStatsBar" class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-400 pb-3 border-b border-gray-200 dark:border-white/10 mb-3">
+                                            <div id="videoViews" class="font-medium"></div>
+                                            <div id="videoDate"></div>
+                                            <div id="videoDuration"></div>
+                                        </div>
+
+                                        <!-- Transcript Language Selector -->
+                                        <div id="languageSelectorContainer" class="hidden mb-3">
+                                            <label for="languageSelector" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Transcript Language
+                                            </label>
+                                            <select
+                                                id="languageSelector"
+                                                onchange="switchLanguage(this.value)"
+                                                class="block w-full rounded-md border-0 py-2 px-3 text-sm text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-indigo-600 bg-white dark:bg-gray-950"
+                                            >
+                                            </select>
+                                            <div class="flex items-center justify-end mt-1">
+                                                <span id="transcriptType" class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Description Section -->
+                            <section id="descriptionSection" class="hidden">
+                                <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800 dark:shadow-none dark:outline dark:-outline-offset-1 dark:outline-white/10">
+                                    <div class="p-6">
+                                        <button
+                                            onclick="toggleDescription()"
+                                            class="flex items-center justify-between w-full text-left mb-3"
+                                        >
+                                            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Description</h3>
+                                            <svg id="descriptionChevron" class="h-5 w-5 text-gray-400 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                        <div id="descriptionContent" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap overflow-hidden transition-all" style="max-height: 0;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- Left Column (2 cols) - Transcript -->
+                        <div id="transcriptSection" class="hidden lg:col-span-2 lg:order-1">
+                            <section>
+                                <div class="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800 dark:shadow-none dark:outline dark:-outline-offset-1 dark:outline-white/10">
+                                    <!-- Transcript Header -->
+                                    <div class="p-6 border-b border-gray-200 dark:border-white/10">
+                                        <div class="flex justify-between items-center mb-4">
+                                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Transcript</h2>
+                                            <label class="flex items-center gap-2 cursor-pointer">
+                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Timestamps</span>
+                                                <input
+                                                    type="checkbox"
+                                                    id="showTimestamps"
+                                                    checked
+                                                    onchange="toggleTimestamps()"
+                                                    class="h-4 w-4 rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-600 dark:bg-gray-950 dark:ring-offset-gray-900"
+                                                >
+                                            </label>
+                                        </div>
+
+                                        <!-- Export Buttons -->
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <button
+                                                onclick="copyAsText()"
+                                                class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition"
+                                            >
+                                                Copy Text
+                                            </button>
+                                            <button
+                                                onclick="copyAsJSON()"
+                                                class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition"
+                                            >
+                                                Copy JSON
+                                            </button>
+                                            <button
+                                                onclick="exportAsText()"
+                                                class="rounded-md bg-gray-700 dark:bg-gray-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-600 dark:hover:bg-gray-500 transition"
+                                            >
+                                                Export TXT
+                                            </button>
+                                            <button
+                                                onclick="exportAsJSON()"
+                                                class="rounded-md bg-gray-700 dark:bg-gray-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-gray-600 dark:hover:bg-gray-500 transition"
+                                            >
+                                                Export JSON
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transcript Content -->
+                                    <div id="transcriptContent" class="p-6 max-h-[calc(100vh-24rem)] overflow-y-auto scroll-smooth">
+                                        <div class="space-y-4"></div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Dark mode toggle
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+        }
+
+        // Stubbed response data for testing
+        const STUB_ENABLED = false;
+
+        const STUB_TRANSCRIPT = {
+            video_id: "dQw4w9WgXcQ",
+            language: "English",
+            language_code: "en",
+            is_generated: false,
+            transcript: [
+                { start: 0.8, duration: 4.5, text: "We're no strangers to love" },
+                { start: 4.5, duration: 3.8, text: "You know the rules and so do I" },
+                { start: 8.3, duration: 4.2, text: "A full commitment's what I'm thinking of" },
+                { start: 12.5, duration: 4.7, text: "You wouldn't get this from any other guy" },
+                { start: 17.2, duration: 3.5, text: "I just wanna tell you how I'm feeling" },
+                { start: 20.7, duration: 3.8, text: "Gotta make you understand" },
+                { start: 24.5, duration: 2.8, text: "Never gonna give you up" },
+                { start: 27.3, duration: 2.7, text: "Never gonna let you down" },
+                { start: 30.0, duration: 3.2, text: "Never gonna run around and desert you" },
+                { start: 33.2, duration: 2.9, text: "Never gonna make you cry" },
+                { start: 36.1, duration: 2.8, text: "Never gonna say goodbye" },
+                { start: 38.9, duration: 3.5, text: "Never gonna tell a lie and hurt you" }
+            ],
+            metadata: {
+                title: "Rick Astley - Never Gonna Give You Up (Official Video)",
+                channel: "Rick Astley",
+                channel_id: "UCuAXFkgsw1L7xaCfnd5JJOw",
+                description: "The official video for Rick Astley's 'Never Gonna Give You Up'.\n\nSubscribe to the official Rick Astley YouTube channel: https://RickAstley.lnk.to/YTSubID\n\nFollow Rick Astley:\nFacebook: https://RickAstley.lnk.to/FBFollowID \nTwitter: https://RickAstley.lnk.to/TwitterID \nInstagram: https://RickAstley.lnk.to/InstagramID \nWebsite: https://RickAstley.lnk.to/storeID \nTikTok: https://RickAstley.lnk.to/TikTokID\n\nLyrics:\nWe're no strangers to love\nYou know the rules and so do I\nA full commitment's what I'm thinking of\nYou wouldn't get this from any other guy",
+                duration: 213,
+                view_count: 1428567890,
+                upload_date: "20091025",
+                thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+            }
+        };
+
+        const STUB_TRANSCRIPT_LIST = {
+            transcripts: [
+                { language: "English", language_code: "en", is_generated: false, is_translatable: true },
+                { language: "Spanish", language_code: "es", is_generated: true, is_translatable: false },
+                { language: "French", language_code: "fr", is_generated: true, is_translatable: false },
+                { language: "German", language_code: "de", is_generated: true, is_translatable: false },
+                { language: "Arabic", language_code: "ar", is_generated: true, is_translatable: false }
+            ]
+        };
+
+        let currentTranscript = null;
+        let isDescriptionExpanded = false;
+        let currentVideoId = null;
+        let currentVideoUrl = null;
+        let availableLanguages = [];
+
+        // Utility Functions
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            }
+            return `${secs}s`;
+        }
+
+        function formatViews(count) {
+            if (count >= 1000000000) {
+                return (count / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B views';
+            }
+            if (count >= 1000000) {
+                return (count / 1000000).toFixed(1).replace(/\.0$/, '') + 'M views';
+            }
+            if (count >= 1000) {
+                return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'K views';
+            }
+            return count + ' views';
+        }
+
+        function formatUploadDate(dateString) {
+            if (!dateString || dateString.length !== 8) return '';
+
+            const year = dateString.substring(0, 4);
+            const month = dateString.substring(4, 6);
+            const day = dateString.substring(6, 8);
+
+            const date = new Date(year, month - 1, day);
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function getChannelInitials(channelName) {
+            if (!channelName) return '?';
+            const words = channelName.trim().split(' ');
+            if (words.length >= 2) {
+                return (words[0][0] + words[1][0]).toUpperCase();
+            }
+            return channelName.substring(0, 2).toUpperCase();
+        }
+
+        // UI State Functions
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('videoContentContainer').classList.add('hidden');
+            document.getElementById('availableTranscripts').classList.add('hidden');
+            document.getElementById('fetchBtn').disabled = true;
+            document.getElementById('listBtn').disabled = true;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('fetchBtn').disabled = false;
+            document.getElementById('listBtn').disabled = false;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            document.getElementById('errorMessage').textContent = message;
+            errorDiv.classList.remove('hidden');
+            hideLoading();
+        }
+
+        function showTemporaryMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'fixed top-4 right-4 rounded-md bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm font-medium text-green-800 dark:text-green-400 shadow-lg z-50 outline outline-1 -outline-offset-1 outline-green-200 dark:outline-green-900/50';
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 2000);
+        }
+
+        // Video Metadata Display
+        function showVideoInfo(data) {
+            const metadata = data.metadata || {};
+
+            // Store current video ID
+            currentVideoId = data.video_id;
+
+            // Show all sections
+            document.getElementById('videoPlayerSection').classList.remove('hidden');
+            document.getElementById('transcriptSection').classList.remove('hidden');
+            document.getElementById('videoContentContainer').classList.remove('hidden');
+
+            // Set video player
+            const youtubePlayer = document.getElementById('youtubePlayer');
+            youtubePlayer.src = `https://www.youtube.com/embed/${data.video_id}`;
+
+            // Set title
+            document.getElementById('videoTitle').textContent = metadata.title || 'YouTube Video';
+
+            // Set channel info
+            if (metadata.channel) {
+                const channelAvatar = document.getElementById('channelAvatar');
+                channelAvatar.textContent = getChannelInitials(metadata.channel);
+                document.getElementById('channelName').textContent = metadata.channel;
+            }
+
+            // Set stats
+            if (metadata.view_count) {
+                document.getElementById('videoViews').textContent = formatViews(metadata.view_count);
+            }
+            if (metadata.upload_date) {
+                document.getElementById('videoDate').textContent = formatUploadDate(metadata.upload_date);
+            }
+            if (metadata.duration) {
+                document.getElementById('videoDuration').textContent = formatDuration(metadata.duration);
+            }
+
+            // Populate language selector if available
+            if (data.available_languages && data.available_languages.length > 0) {
+                availableLanguages = data.available_languages;
+                populateLanguageSelector(data.available_languages, data.language_code);
+            }
+
+            // Update transcript type badge
+            updateTranscriptTypeBadge(data.is_generated);
+
+            // Set description
+            if (metadata.description) {
+                const descriptionSection = document.getElementById('descriptionSection');
+                const descriptionContent = document.getElementById('descriptionContent');
+                descriptionContent.textContent = metadata.description;
+                descriptionSection.classList.remove('hidden');
+                isDescriptionExpanded = false;
+            }
+        }
+
+        function populateLanguageSelector(languages, selectedLanguageCode) {
+            const selector = document.getElementById('languageSelector');
+            const container = document.getElementById('languageSelectorContainer');
+
+            // Clear existing options
+            selector.innerHTML = '';
+
+            // Add options for each available language
+            languages.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.language_code;
+                option.textContent = `${lang.language} (${lang.language_code})${lang.is_generated ? ' - Auto' : ''}`;
+
+                if (lang.language_code === selectedLanguageCode) {
+                    option.selected = true;
+                }
+
+                selector.appendChild(option);
+            });
+
+            // Show the language selector
+            container.classList.remove('hidden');
+        }
+
+        function updateTranscriptTypeBadge(isGenerated) {
+            const typeElement = document.getElementById('transcriptType');
+            if (isGenerated) {
+                typeElement.className = 'inline-flex items-center rounded-md bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 text-xs font-medium text-yellow-700 dark:text-yellow-400 ring-1 ring-inset ring-yellow-600/20 dark:ring-yellow-600/30';
+                typeElement.textContent = 'Auto-generated';
+            } else {
+                typeElement.className = 'inline-flex items-center rounded-md bg-green-50 dark:bg-green-900/20 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-600/30';
+                typeElement.textContent = 'Manual';
+            }
+        }
+
+        async function switchLanguage(languageCode) {
+            if (!currentVideoUrl || !languageCode) return;
+
+            // Show loading state
+            const transcriptContent = document.getElementById('transcriptContent');
+            transcriptContent.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>';
+
+            try {
+                const response = await fetch('/api/transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        url: currentVideoUrl,
+                        language: languageCode
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'An error occurred');
+                    return;
+                }
+
+                // Log cache status for language switching
+                if (data.from_cache) {
+                    console.log('✅ Transcript loaded from CACHE for language:', data.language_code);
+                } else {
+                    console.log('🌐 Transcript fetched from API for language:', data.language_code);
+                }
+
+                currentTranscript = data;
+                displayTranscript(data);
+                updateTranscriptTypeBadge(data.is_generated);
+
+            } catch (error) {
+                showError('Failed to fetch transcript. Please try again.');
+                console.error(error);
+            }
+        }
+
+        function toggleDescription() {
+            const descriptionContent = document.getElementById('descriptionContent');
+            const chevron = document.getElementById('descriptionChevron');
+
+            isDescriptionExpanded = !isDescriptionExpanded;
+
+            if (isDescriptionExpanded) {
+                descriptionContent.style.maxHeight = descriptionContent.scrollHeight + 'px';
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                descriptionContent.style.maxHeight = '0';
+                chevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Transcript Display
+        function displayTranscript(data) {
+            const transcriptHtml = data.transcript.map(item => `
+                <div class="py-2">
+                    <div class="timestamp text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1">${formatTime(item.start)}</div>
+                    <div class="text-sm text-gray-900 dark:text-gray-100 leading-relaxed">${item.text}</div>
+                </div>
+            `).join('');
+
+            const contentDiv = document.getElementById('transcriptContent');
+            contentDiv.innerHTML = `<div class="space-y-3">${transcriptHtml}</div>`;
+        }
+
+        function toggleTimestamps() {
+            const timestamps = document.querySelectorAll('.timestamp');
+            const showTimestamps = document.getElementById('showTimestamps').checked;
+            timestamps.forEach(timestamp => {
+                timestamp.style.display = showTimestamps ? 'block' : 'none';
+            });
+        }
+
+        // Available Transcripts Display
+        function displayAvailableTranscripts(transcripts) {
+            const listDiv = document.getElementById('transcriptList');
+            listDiv.innerHTML = transcripts.map(t => `
+                <div class="flex justify-between items-center p-3 rounded-md bg-gray-50 dark:bg-gray-900 outline outline-1 -outline-offset-1 outline-gray-200 dark:outline-white/10">
+                    <span class="font-medium text-gray-900 dark:text-white">${t.language} <span class="text-gray-500 dark:text-gray-400">(${t.language_code})</span></span>
+                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${
+                        t.is_generated
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20 dark:ring-yellow-600/30'
+                            : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 ring-green-600/20 dark:ring-green-600/30'
+                    }">
+                        ${t.is_generated ? 'Auto-generated' : 'Manual'}
+                    </span>
+                </div>
+            `).join('');
+
+            document.getElementById('availableTranscripts').classList.remove('hidden');
+        }
+
+        // API Functions
+        async function getTranscript() {
+            const url = document.getElementById('urlInput').value.trim();
+
+            if (!url) {
+                showError('Please enter a YouTube URL');
+                return;
+            }
+
+            // Store the current URL for language switching
+            currentVideoUrl = url;
+
+            showLoading();
+
+            if (STUB_ENABLED) {
+                setTimeout(() => {
+                    currentTranscript = STUB_TRANSCRIPT;
+                    displayTranscript(STUB_TRANSCRIPT);
+                    showVideoInfo(STUB_TRANSCRIPT);
+                    hideLoading();
+                }, 1000);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'An error occurred');
+                    return;
+                }
+
+                // Log cache status
+                if (data.from_cache) {
+                    console.log('✅ Transcript loaded from CACHE for language:', data.language_code);
+                } else {
+                    console.log('🌐 Transcript fetched from API for language:', data.language_code);
+                }
+
+                currentTranscript = data;
+                displayTranscript(data);
+                showVideoInfo(data);
+                hideLoading();
+
+            } catch (error) {
+                showError('Failed to fetch transcript. Please try again.');
+                console.error(error);
+            }
+        }
+
+        async function listTranscripts() {
+            const url = document.getElementById('urlInput').value.trim();
+
+            if (!url) {
+                showError('Please enter a YouTube URL');
+                return;
+            }
+
+            showLoading();
+
+            if (STUB_ENABLED) {
+                setTimeout(() => {
+                    displayAvailableTranscripts(STUB_TRANSCRIPT_LIST.transcripts);
+                    hideLoading();
+                }, 800);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/list-transcripts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'An error occurred');
+                    return;
+                }
+
+                displayAvailableTranscripts(data.transcripts);
+                hideLoading();
+
+            } catch (error) {
+                showError('Failed to fetch available transcripts. Please try again.');
+                console.error(error);
+            }
+        }
+
+        // Export Functions
+        async function copyAsText() {
+            if (!currentTranscript) return;
+
+            const showTimestamps = document.getElementById('showTimestamps').checked;
+            const text = currentTranscript.transcript
+                .map(item => {
+                    if (showTimestamps) {
+                        return `[${formatTime(item.start)}] ${item.text}`;
+                    }
+                    return item.text;
+                })
+                .join('\n\n');
+
+            try {
+                await navigator.clipboard.writeText(text);
+                showTemporaryMessage('Copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                showError('Failed to copy to clipboard');
+            }
+        }
+
+        async function copyAsJSON() {
+            if (!currentTranscript) return;
+
+            const json = JSON.stringify(currentTranscript, null, 2);
+            try {
+                await navigator.clipboard.writeText(json);
+                showTemporaryMessage('JSON copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                showError('Failed to copy to clipboard');
+            }
+        }
+
+        function exportAsText() {
+            if (!currentTranscript) return;
+
+            const text = currentTranscript.transcript
+                .map(item => `[${formatTime(item.start)}] ${item.text}`)
+                .join('\n\n');
+
+            downloadFile(text, 'transcript.txt', 'text/plain');
+        }
+
+        function exportAsJSON() {
+            if (!currentTranscript) return;
+
+            const json = JSON.stringify(currentTranscript, null, 2);
+            downloadFile(json, 'transcript.json', 'application/json');
+        }
+
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Event Listeners
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getTranscript();
+            }
+        });
+    </script>
+</body>
+</html>
