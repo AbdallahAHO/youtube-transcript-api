@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Environment
+.env
+.env.local
+
+# Documentation (not needed in image)
+*.md
+!DOCKER.md
+
+# MacOS
+.DS_Store
+
+# Project specific
+run.sh
+.env.example
+
+# Testing
+*.log
