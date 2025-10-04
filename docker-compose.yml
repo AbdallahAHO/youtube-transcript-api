@@ -6,14 +6,14 @@ services:
     image: youtube-transcript-api:latest
     container_name: youtube-transcript-api
     ports:
-      - "9585:8000"
+      - "9585:${PORT:-}"
     environment:
       # Optional: Add Webshare proxy credentials for bypassing YouTube blocking
       - WEBSHARE_PROXY_USERNAME=${WEBSHARE_PROXY_USERNAME:-}
       - WEBSHARE_PROXY_PASSWORD=${WEBSHARE_PROXY_PASSWORD:-}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9585/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
