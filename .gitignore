@@ -27,6 +27,7 @@ coverage.xml
 *.swp
 *.swo
 *~
+.claude/
 
 # Environment
 .env
